@@ -19,7 +19,7 @@ from pandas.tests.test_series import assert_series_equal
 from pandas.tests.test_frame import assert_frame_equal
 from pandas import concat, Timestamp
 from pandas import compat
-from pandas.compat import range, lrange
+from pandas.compat import range, lrange, u
 from pandas.util.testing import assert_produces_warning
 
 try:
@@ -1328,7 +1328,7 @@ class TestHDFStore(unittest.TestCase):
 
             # py3 ok for unicode
             if not compat.PY3:
-                l.append(('unicode', u'\u03c3'))
+                l.append(('unicode', u('\\u03c3')))
 
             ### currently not supported dtypes ####
             for n, f in l:
@@ -2920,7 +2920,7 @@ class TestHDFStore(unittest.TestCase):
 
     def test_unicode_index(self):
 
-        unicode_values = [u'\u03c3', u'\u03c3\u03c3']
+        unicode_values = [u('\\u03c3'), u('\\u03c3\\u03c3')]
         s = Series(np.random.randn(len(unicode_values)), unicode_values)
 
         if compat.PY3:

@@ -112,8 +112,8 @@ def test_is_string():
         MyString = MyUnicode
 
     strings = ('s', np.str_('a'), np.unicode_('unicode_string'),
-               MyString('asdfasdfasdf'), u'asdf', MyUnicode(u'asdf'))
-    not_strings = [], 1, {}, set(), np.array(['1']), np.array([u'1'])
+               MyString('asdfasdfasdf'), u('asdf'), MyUnicode(u('asdf')))
+    not_strings = [], 1, {}, set(), np.array(['1']), np.array([u('1')])
 
     for string in strings:
         assert com.is_string(string), '{0} is not a string'.format(string)
