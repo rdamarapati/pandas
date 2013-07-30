@@ -309,8 +309,10 @@ class BaseExprVisitor(ast.NodeVisitor):
     unary_op_nodes = 'UAdd', 'USub', 'Invert', 'Not'
     unary_op_nodes_map = dict(zip(unary_ops, unary_op_nodes))
 
-    def __init__(self, env, preparser=_preparse):
+    def __init__(self, env, engine, parser, preparser=_preparse):
         self.env = env
+        self.engine = engine
+        self.parser = parser
         self.preparser = preparser
 
     def visit(self, node, **kwargs):
@@ -373,7 +375,8 @@ class BaseExprVisitor(ast.NodeVisitor):
         expr = com.pprint_thing(slobj)
         result = pd.eval(expr, local_dict=self.env.locals,
                          global_dict=self.env.globals,
-                         resolvers=self.env.resolvers)
+                         resolvers=self.env.resolvers, engine=self.engine,
+                         parser=self.parser)
         try:
             # a Term instance
             v = value.value[result]
@@ -381,7 +384,8 @@ class BaseExprVisitor(ast.NodeVisitor):
             # an Op instance
             lhs = pd.eval(com.pprint_thing(value), local_dict=self.env.locals,
                           global_dict=self.env.globals,
-                          resolvers=self.env.resolvers)
+                          resolvers=self.env.resolvers, engine=self.engine,
+                          parser=self.parser)
             v = lhs[result]
         name = self.env.add_tmp(v)
         return self.term_type(name, env=self.env)
@@ -502,14 +506,15 @@ _numexpr_supported_calls = frozenset(_reductions + _mathops)
 @disallow((_unsupported_nodes | _python_not_supported) -
           (_boolop_nodes | frozenset(['BoolOp', 'Attribute'])))
 class PandasExprVisitor(BaseExprVisitor):
-    def __init__(self, env, preparser=_replace_booleans):
-        super(PandasExprVisitor, self).__init__(env, preparser)
+    def __init__(self, env, engine, parser, preparser=_replace_booleans):
+        super(PandasExprVisitor, self).__init__(env, engine, parser, preparser)
 
 
 @disallow(_unsupported_nodes | _python_not_supported | frozenset(['Not']))
 class PythonExprVisitor(BaseExprVisitor):
-    def __init__(self, env, preparser=lambda x: x):
-        super(PythonExprVisitor, self).__init__(env, preparser=preparser)
+    def __init__(self, env, engine, parser, preparser=lambda x: x):
+        super(PythonExprVisitor, self).__init__(env, engine, parser,
+                                                preparser=preparser)
 
 
 class Expr(StringMixin):
@@ -520,14 +525,15 @@ class Expr(StringMixin):
                  truediv=True):
         self.expr = expr
         self.env = _ensure_scope(level=2,local_dict=env)
-        self._visitor = _parsers[parser](self.env)
-        self.terms = self.parse()
         self.engine = engine
+        self.parser = parser
+        self._visitor = _parsers[parser](self.env, self.engine, self.parser)
+        self.terms = self.parse()
         self.truediv = truediv
 
-    def __call__(self, env):
-        env.locals['truediv'] = self.truediv
-        return self.terms(env)
+    def __call__(self):
+        self.env.locals['truediv'] = self.truediv
+        return self.terms(self.env)
 
     def __unicode__(self):
         return com.pprint_thing(self.terms)
